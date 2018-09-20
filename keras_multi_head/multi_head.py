@@ -8,11 +8,17 @@ class MultiHead(keras.layers.Wrapper):
     def __init__(self,
                  layer,
                  layer_num=1,
+                 reg_index=None,
+                 reg_slice=None,
+                 reg_factor=0.0,
                  **kwargs):
         """Initialize the wrapper layer.
 
         :param layer: The layer to be duplicated or a list of layers.
         :param layer_num: The number of duplicated layers.
+        :param reg_index: The index of weights to be regularized.
+        :param reg_slice: The slice indicates which part of the weight to be regularized.
+        :param reg_factor: The weights of the regularization.
         :param kwargs: Arguments for parent.
         """
         if type(layer) is list:
@@ -25,11 +31,40 @@ class MultiHead(keras.layers.Wrapper):
             self.layers = []
             self.layer_num = layer_num
             self.rename = True
+        if reg_index is None or type(reg_index) is list:
+            self.reg_index = reg_index
+        else:
+            self.reg_index = [reg_index]
+        if type(reg_slice) is list or reg_index is None:
+            self.reg_slice = reg_slice
+        else:
+            self.reg_slice = [reg_slice] * len(self.reg_index)
+        if reg_factor is None or type(reg_factor) is list or reg_index is None:
+            self.reg_weight = reg_factor
+        else:
+            self.reg_weight = [reg_factor] * len(self.reg_index)
         self.supports_masking = self.layer.supports_masking
         super(MultiHead, self).__init__(self.layer, **kwargs)
 
     def get_config(self):
-        config = {'layers': []}
+        slices = None
+        if self.reg_slice:
+            slices = []
+            for interval in self.reg_slice:
+                if interval is None:
+                    slices.append(None)
+                elif type(interval) is slice:
+                    slices.append([interval.start, interval.stop, interval.step])
+                else:
+                    slices.append([])
+                    for sub in interval:
+                        slices[-1].append([sub.start, sub.stop, sub.step])
+        config = {
+            'layers': [],
+            'reg_index': self.reg_index,
+            'reg_slice': slices,
+            'reg_factor': self.reg_weight,
+        }
         for layer in self.layers:
             config['layers'].append({
                 'class_name': layer.__class__.__name__,
@@ -41,9 +76,23 @@ class MultiHead(keras.layers.Wrapper):
 
     @classmethod
     def from_config(cls, config, custom_objects=None):
+        reg_slice = config.pop('reg_slice')
+        if reg_slice is not None:
+            slices = []
+            for interval in reg_slice:
+                if interval is None:
+                    slices.append(None)
+                elif type(interval[0]) is list:
+                    slices.append([])
+                    for sub in interval:
+                        slices[-1].append(slice(sub[0], sub[1], sub[2]))
+                    slices[-1] = tuple(slices[-1])
+                else:
+                    slices.append(slice(interval[0], interval[1], interval[2]))
+            reg_slice = slices
         from keras.layers import deserialize as deserialize_layer
         layers = [deserialize_layer(layer, custom_objects=custom_objects) for layer in config.pop('layers')]
-        return cls(layers, **config)
+        return cls(layers, reg_slice=reg_slice, **config)
 
     def build(self, input_shape):
         if type(input_shape) == list:
@@ -57,6 +106,18 @@ class MultiHead(keras.layers.Wrapper):
                 if self.rename:
                     layer.name = layer.name + '_%d' % (i + 1)
                 layer.build(input_shape)
+        if self.reg_index:
+            for i, (index, interval, weight) in enumerate(zip(self.reg_index, self.reg_slice, self.reg_weight)):
+                weights = []
+                if type(interval) is slice:
+                    interval = (interval,)
+                for layer in self.layers:
+                    if interval is None:
+                        weights.append(K.flatten(layer.get_weights()[index]))
+                    else:
+                        weights.append(K.flatten(layer.get_weights()[index][interval]))
+                weights = K.stack(weights)
+                self.add_loss(weight * K.sum(K.square(K.dot(weights, K.transpose(weights)) - K.eye(len(self.layers)))))
         super(MultiHead, self).build(input_shape)
 
     def compute_output_shape(self, input_shape):
@@ -104,7 +165,7 @@ class MultiHead(keras.layers.Wrapper):
 
     @property
     def updates(self):
-        updates = []
+        updates = self._updates
         for layer in self.layers:
             if hasattr(layer, 'updates'):
                 updates += layer.updates
@@ -117,7 +178,7 @@ class MultiHead(keras.layers.Wrapper):
             if uid in self._input_map:
                 inner_inputs = self._input_map[uid]
 
-        updates = []
+        updates = self._updates
         for layer in self.layers:
             layer_updates = layer.get_updates_for(inner_inputs)
             layer_updates += super(MultiHead, self).get_updates_for(inputs)
@@ -126,7 +187,7 @@ class MultiHead(keras.layers.Wrapper):
 
     @property
     def losses(self):
-        losses = []
+        losses = self._losses
         for layer in self.layers:
             if hasattr(layer, 'losses'):
                 losses += layer.losses
