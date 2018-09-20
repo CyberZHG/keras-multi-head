@@ -8,7 +8,7 @@ setup(
     license='MIT',
     author='CyberZHG',
     author_email='CyberZHG@gmail.com',
-    description='A wrapper layer for using layers in parallel',
+    description='A wrapper layer for stacking layers horizontally',
     long_description=open('README.rst', 'r').read(),
     install_requires=[
         'numpy',
