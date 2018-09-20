@@ -66,8 +66,13 @@ class MultiHead(keras.layers.Wrapper):
     def compute_mask(self, inputs, mask=None):
         return self.layers[0].compute_mask(inputs, mask)
 
-    def call(self, inputs, mask=None):
-        outputs = [K.expand_dims(layer.call(inputs, mask)) for layer in self.layers]
+    def call(self, inputs, training=None, mask=None):
+        kwargs = {}
+        if keras.utils.generic_utils.has_arg(self.layer.call, 'training'):
+            kwargs['training'] = training
+        if keras.utils.generic_utils.has_arg(self.layer.call, 'mask') and mask is not None:
+            kwargs['mask'] = mask
+        outputs = [K.expand_dims(layer.call(inputs, **kwargs)) for layer in self.layers]
         return K.concatenate(outputs, axis=-1)
 
     def get_weights(self):

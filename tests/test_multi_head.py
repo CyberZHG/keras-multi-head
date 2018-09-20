@@ -21,6 +21,21 @@ class MaskFlatten(keras.layers.Flatten):
 
 class TestMultiHead(unittest.TestCase):
 
+    @staticmethod
+    def data_generator(batch_size=32):
+        while True:
+            max_len = random.randint(5, 10)
+            data = np.zeros((batch_size, max_len))
+            tag = np.zeros(batch_size, dtype='int32')
+            for i in range(batch_size):
+                datum_len = random.randint(1, max_len - 1)
+                total = 0
+                for j in range(datum_len):
+                    data[i, j] = random.randint(1, 4)
+                    total += data[i, j]
+                tag[i] = total % 2
+            yield data, tag
+
     def test_multi_attention(self):
         model = keras.models.Sequential()
         model.add(keras.layers.Embedding(input_dim=5, output_dim=3, mask_zero=True, name='Embed'))
@@ -35,28 +50,14 @@ class TestMultiHead(unittest.TestCase):
             metrics=[keras.metrics.sparse_categorical_accuracy],
         )
 
-        def data_generator(batch_size=32):
-            while True:
-                max_len = random.randint(5, 10)
-                data = np.zeros((batch_size, max_len))
-                tag = np.zeros(batch_size, dtype='int32')
-                for i in range(batch_size):
-                    datum_len = random.randint(1, max_len - 1)
-                    total = 0
-                    for j in range(datum_len):
-                        data[i, j] = random.randint(1, 4)
-                        total += data[i, j]
-                    tag[i] = total % 2
-                yield data, tag
-
         model.fit_generator(
-            generator=data_generator(),
+            generator=self.data_generator(),
             steps_per_epoch=100,
             epochs=100,
-            validation_data=data_generator(),
+            validation_data=self.data_generator(),
             validation_steps=10,
             callbacks=[
-                keras.callbacks.EarlyStopping(monitor='val_loss', patience=2),
+                keras.callbacks.EarlyStopping(monitor='val_sparse_categorical_accuracy', patience=5),
             ],
         )
         model.layers[1].set_weights(model.layers[1].get_weights())
@@ -69,7 +70,7 @@ class TestMultiHead(unittest.TestCase):
             'MultiHead': MultiHead,
         })
         model.summary()
-        for data, tag in data_generator():
+        for data, tag in self.data_generator():
             predicts = model.predict(data)
             predicts = np.argmax(predicts, axis=-1)
             self.assertGreaterEqual(np.sum(tag == predicts), 30)
@@ -113,3 +114,43 @@ class TestMultiHead(unittest.TestCase):
             [[8.0, 5.0], [5.0, 4.0]],
         ]
         self.assertTrue(np.allclose(expected, predicts))
+
+    def test_multi_cnn(self):
+        model = keras.models.Sequential()
+        model.add(keras.layers.Embedding(input_dim=5, output_dim=3, name='Embed'))
+        model.add(MultiHead([
+            keras.layers.Conv1D(filters=32, kernel_size=3, padding='same'),
+            keras.layers.Conv1D(filters=32, kernel_size=5, padding='same'),
+            keras.layers.Conv1D(filters=32, kernel_size=7, padding='same'),
+        ], name='Multi-Head-Attention'))
+        model.add(keras.layers.TimeDistributed(keras.layers.Flatten(), name='Flatten'))
+        model.add(keras.layers.Bidirectional(keras.layers.GRU(units=8), name='Bi-GRU'))
+        model.add(keras.layers.Dense(units=2, activation='softmax', name='Dense'))
+        model.build()
+        model.compile(
+            optimizer=keras.optimizers.Adam(),
+            loss=keras.losses.sparse_categorical_crossentropy,
+            metrics=[keras.metrics.sparse_categorical_accuracy],
+        )
+
+        model.fit_generator(
+            generator=self.data_generator(),
+            steps_per_epoch=100,
+            epochs=100,
+            validation_data=self.data_generator(),
+            validation_steps=10,
+            callbacks=[
+                keras.callbacks.EarlyStopping(monitor='val_sparse_categorical_accuracy', patience=5),
+            ],
+        )
+        model.layers[1].set_weights(model.layers[1].get_weights())
+
+        model_path = os.path.join(tempfile.gettempdir(), 'test_save_load_%f.h5' % random.random())
+        model.save(model_path)
+        model = keras.models.load_model(model_path, custom_objects={'MultiHead': MultiHead})
+        model.summary()
+        for data, tag in self.data_generator():
+            predicts = model.predict(data)
+            predicts = np.argmax(predicts, axis=-1)
+            self.assertGreaterEqual(np.sum(tag == predicts), 30)
+            break
