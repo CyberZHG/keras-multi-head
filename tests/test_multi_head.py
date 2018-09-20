@@ -75,7 +75,7 @@ class TestMultiHead(unittest.TestCase):
             self.assertGreaterEqual(np.sum(tag == predicts), 30)
             break
 
-    def test_fake_multi_pooling(self):
+    def test_multi_pooling(self):
         data = [
             [1, 3, 2, 4],
             [2, 8, 3, 5],
@@ -86,12 +86,30 @@ class TestMultiHead(unittest.TestCase):
         ]
         data_input = keras.layers.Input(shape=(4,), name='Input-Data')
         pos_input = keras.layers.Input(shape=(2,), name='Input-Pos')
-        pooling = MultiHead(PiecewisePooling1D(), layer_num=2, name='Multi-Head-Pooling')([data_input, pos_input])
+        pooling = MultiHead(
+            [
+                PiecewisePooling1D(pool_type=PiecewisePooling1D.POOL_TYPE_MAX),
+                PiecewisePooling1D(pool_type=PiecewisePooling1D.POOL_TYPE_AVERAGE),
+            ],
+            name='Multi-Head-Pooling',
+        )([data_input, pos_input])
         model = keras.models.Model(inputs=[data_input, pos_input], outputs=pooling)
         model.summary()
         predicts = model.predict([np.asarray(data), np.asarray(positions)]).tolist()
         expected = [
-            [[1.0, 1.0], [3.0, 3.0]],
-            [[8.0, 8.0], [5.0, 5.0]],
+            [[1.0, 1.0], [3.0, 2.5]],
+            [[8.0, 5.0], [5.0, 4.0]],
         ]
-        self.assertEqual(expected, predicts)
+        self.assertTrue(np.allclose(expected, predicts))
+
+        model_path = os.path.join(tempfile.gettempdir(), 'test_save_load_%f.h5' % random.random())
+        model.save(model_path)
+        custom_objects = PiecewisePooling1D.get_custom_objects()
+        custom_objects['MultiHead'] = MultiHead
+        model = keras.models.load_model(model_path, custom_objects=custom_objects)
+        predicts = model.predict([np.asarray(data), np.asarray(positions)]).tolist()
+        expected = [
+            [[1.0, 1.0], [3.0, 2.5]],
+            [[8.0, 5.0], [5.0, 4.0]],
+        ]
+        self.assertTrue(np.allclose(expected, predicts))
