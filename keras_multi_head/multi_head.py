@@ -8,6 +8,8 @@ class MultiHead(keras.layers.Wrapper):
     def __init__(self,
                  layer,
                  layer_num=1,
+                 hidden_dim=None,
+                 use_bias=True,
                  reg_index=None,
                  reg_slice=None,
                  reg_factor=0.0,
@@ -16,6 +18,9 @@ class MultiHead(keras.layers.Wrapper):
 
         :param layer: The layer to be duplicated or a list of layers.
         :param layer_num: The number of duplicated layers.
+        :param hidden_dim: A linear transformation will be applied to the input data if provided, otherwise the original
+                           data will be feed to the sub-layers.
+        :param use_bias: Whether to use bias in the linear transformation.
         :param reg_index: The index of weights to be regularized.
         :param reg_slice: The slice indicates which part of the weight to be regularized.
         :param reg_factor: The weights of the regularization.
@@ -31,6 +36,8 @@ class MultiHead(keras.layers.Wrapper):
             self.layers = []
             self.layer_num = layer_num
             self.rename = True
+        self.hidden_dim = hidden_dim
+        self.use_bias = use_bias
         if reg_index is None or type(reg_index) is list:
             self.reg_index = reg_index
         else:
@@ -43,6 +50,8 @@ class MultiHead(keras.layers.Wrapper):
             self.reg_weight = reg_factor
         else:
             self.reg_weight = [reg_factor] * len(self.reg_index)
+
+        self.W, self.b = None, None
         self.supports_masking = self.layer.supports_masking
         super(MultiHead, self).__init__(self.layer, **kwargs)
 
@@ -61,6 +70,8 @@ class MultiHead(keras.layers.Wrapper):
                         slices[-1].append([sub.start, sub.stop, sub.step])
         config = {
             'layers': [],
+            'hidden_dim': self.hidden_dim,
+            'use_bias': self.use_bias,
             'reg_index': self.reg_index,
             'reg_slice': slices,
             'reg_factor': self.reg_weight,
@@ -90,8 +101,7 @@ class MultiHead(keras.layers.Wrapper):
                 else:
                     slices.append(slice(interval[0], interval[1], interval[2]))
             reg_slice = slices
-        from keras.layers import deserialize as deserialize_layer
-        layers = [deserialize_layer(layer, custom_objects=custom_objects) for layer in config.pop('layers')]
+        layers = [keras.layers.deserialize(layer, custom_objects=custom_objects) for layer in config.pop('layers')]
         return cls(layers, reg_slice=reg_slice, **config)
 
     def build(self, input_shape):
@@ -101,6 +111,19 @@ class MultiHead(keras.layers.Wrapper):
             self.input_spec = keras.engine.InputSpec(shape=input_shape)
         if not self.layers:
             self.layers = [copy.deepcopy(self.layer) for _ in range(self.layer_num)]
+        if self.hidden_dim is not None:
+            self.W = self.add_weight(
+                shape=(input_shape[-1], self.hidden_dim * self.layer_num),
+                name='{}_W'.format(self.name),
+                initializer=keras.initializers.get('uniform'),
+            )
+            if self.use_bias:
+                self.b = self.add_weight(
+                    shape=(self.hidden_dim * self.layer_num,),
+                    name='{}_b'.format(self.name),
+                    initializer=keras.initializers.get('zeros'),
+                )
+            input_shape = input_shape[:-1] + (self.hidden_dim,)
         for i, layer in enumerate(self.layers):
             if not layer.built:
                 if self.rename:
@@ -121,6 +144,8 @@ class MultiHead(keras.layers.Wrapper):
         super(MultiHead, self).build(input_shape)
 
     def compute_output_shape(self, input_shape):
+        if self.hidden_dim is not None:
+            input_shape = input_shape[:-1] + (self.hidden_dim,)
         child_output_shape = self.layers[0].compute_output_shape(input_shape)
         return child_output_shape + (self.layer_num,)
 
@@ -133,32 +158,29 @@ class MultiHead(keras.layers.Wrapper):
             kwargs['training'] = training
         if keras.utils.generic_utils.has_arg(self.layer.call, 'mask') and mask is not None:
             kwargs['mask'] = mask
-        outputs = [K.expand_dims(layer.call(inputs, **kwargs)) for layer in self.layers]
+        if self.hidden_dim is None:
+            outputs = [K.expand_dims(layer.call(inputs, **kwargs)) for layer in self.layers]
+        else:
+            outputs = []
+            for i, layer in enumerate(self.layers):
+                begin = i * self.hidden_dim
+                end = begin + self.hidden_dim
+                transformed = K.dot(inputs, self.W[:, begin:end])
+                if self.use_bias:
+                    transformed += self.b[begin:end]
+                outputs.append(K.expand_dims(layer.call(transformed, **kwargs)))
         return K.concatenate(outputs, axis=-1)
-
-    def get_weights(self):
-        weights = []
-        for layer in self.layers:
-            weights += layer.get_weights()
-        return weights
-
-    def set_weights(self, weights):
-        offset = 0
-        for layer in self.layers:
-            length = len(layer.get_weights())
-            layer.set_weights(weights[offset:offset + length])
-            offset += length
 
     @property
     def trainable_weights(self):
-        weights = []
+        weights = self._trainable_weights[:]
         for layer in self.layers:
             weights += layer.trainable_weights
         return weights
 
     @property
     def non_trainable_weights(self):
-        weights = []
+        weights = self._non_trainable_weights[:]
         for layer in self.layers:
             weights += layer.non_trainable_weights
         return weights

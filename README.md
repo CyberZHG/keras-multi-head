@@ -54,6 +54,10 @@ model.build()
 model.summary()
 ```
 
+### Linear Transformation
+
+The input data will be mapped to different values of the same shape for each layer when `hidden_dim` is given.
+
 ### Regularization
 
 ![](https://user-images.githubusercontent.com/853842/45857922-8b4e4100-bd8d-11e8-905a-4eb07da31418.png)
