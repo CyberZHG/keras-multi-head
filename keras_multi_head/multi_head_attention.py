@@ -15,6 +15,7 @@ class MultiHeadAttention(keras.layers.Layer):
                  kernel_initializer='glorot_normal',
                  kernel_regularizer=None,
                  kernel_constraint=None,
+                 history_only=False,
                  **kwargs):
         """Initialize the layer.
 
@@ -23,7 +24,7 @@ class MultiHeadAttention(keras.layers.Layer):
         :param kernel_initializer: Initializer for linear mappings.
         :param kernel_regularizer: Regularizer for linear mappings.
         :param kernel_constraint: Constraints for linear mappings.
-        :param feature_dim: The dimension of input feature.
+        :param history_only: Whether to only use history in attention layer.
         """
         self.supports_masking = True
         self.head_num = head_num
@@ -31,6 +32,7 @@ class MultiHeadAttention(keras.layers.Layer):
         self.kernel_initializer = keras.initializers.get(kernel_initializer)
         self.kernel_regularizer = keras.regularizers.get(kernel_regularizer)
         self.kernel_constraint = keras.constraints.get(kernel_constraint)
+        self.history_only = history_only
 
         self.Wq, self.Wk, self.Wv, self.Wo = None, None, None, None
         super(MultiHeadAttention, self).__init__(**kwargs)
@@ -42,6 +44,7 @@ class MultiHeadAttention(keras.layers.Layer):
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
+            'history_only': self.history_only,
         }
         base_config = super(MultiHeadAttention, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -104,7 +107,10 @@ class MultiHeadAttention(keras.layers.Layer):
         outputs = []
         for i in range(self.head_num):
             begin, end = i * head_dim, (i + 1) * head_dim
-            outputs.append(ScaledDotProductAttention(name='%s-Att-%d' % (self.name, i + 1))([
+            outputs.append(ScaledDotProductAttention(
+                history_only=self.history_only,
+                name='%s-Att-%d' % (self.name, i + 1),
+            )([
                 q[:, :, begin:end],
                 k[:, :, begin:end],
                 v[:, :, begin:end],
