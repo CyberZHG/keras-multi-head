@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='keras-multi-head',
-    version='0.6.0',
+    version='0.8.0',
     packages=['keras_multi_head'],
     url='https://github.com/CyberZHG/keras-multi-head',
     license='MIT',
@@ -13,6 +13,7 @@ setup(
     install_requires=[
         'numpy',
         'Keras',
+        'keras-self-attention==0.30.0',
     ],
     classifiers=(
         "Programming Language :: Python :: 2.7",

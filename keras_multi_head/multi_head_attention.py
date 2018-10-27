@@ -11,26 +11,26 @@ class MultiHeadAttention(keras.layers.Layer):
 
     def __init__(self,
                  head_num,
+                 activation='relu',
                  kernel_initializer='glorot_normal',
                  kernel_regularizer=None,
                  kernel_constraint=None,
-                 kernel_activation='relu',
                  **kwargs):
         """Initialize the layer.
 
         :param head_num: Number of heads.
+        :param activation: Activations for linear mappings.
         :param kernel_initializer: Initializer for linear mappings.
         :param kernel_regularizer: Regularizer for linear mappings.
         :param kernel_constraint: Constraints for linear mappings.
-        :param kernel_activation: Activations for linear mappings.
         :param feature_dim: The dimension of input feature.
         """
         self.supports_masking = True
         self.head_num = head_num
+        self.activation = keras.activations.get(activation)
         self.kernel_initializer = keras.initializers.get(kernel_initializer)
         self.kernel_regularizer = keras.regularizers.get(kernel_regularizer)
         self.kernel_constraint = keras.constraints.get(kernel_constraint)
-        self.kernel_activation = keras.activations.get(kernel_activation)
 
         self.kernels = {name: None for name in ['Wq', 'Wk', 'Wv', 'Wo']}
         super(MultiHeadAttention, self).__init__(**kwargs)
@@ -38,10 +38,10 @@ class MultiHeadAttention(keras.layers.Layer):
     def get_config(self):
         config = {
             'head_num': self.head_num,
+            'activation': self.activation,
             'kernel_initializer': self.kernel_initializer,
             'kernel_regularizer': self.kernel_regularizer,
             'kernel_constraint': self.kernel_constraint,
-            'kernel_activation': self.kernel_activation,
         }
         base_config = super(MultiHeadAttention, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -67,9 +67,13 @@ class MultiHeadAttention(keras.layers.Layer):
     def call(self, inputs, mask=None):
         feature_dim = K.shape(inputs)[-1]
         head_dim = feature_dim // self.head_num
-        q = self.kernel_activation(K.dot(inputs, self.kernels['Wq']))
-        k = self.kernel_activation(K.dot(inputs, self.kernels['Wk']))
-        v = self.kernel_activation(K.dot(inputs, self.kernels['Wv']))
+        q = K.dot(inputs, self.kernels['Wq'])
+        k = K.dot(inputs, self.kernels['Wk'])
+        v = K.dot(inputs, self.kernels['Wv'])
+        if self.activation is not None:
+            q = self.activation(q)
+            k = self.activation(k)
+            v = self.activation(v)
         outputs = []
         for i in range(self.head_num):
             begin, end = i * head_dim, (i + 1) * head_dim
@@ -78,4 +82,7 @@ class MultiHeadAttention(keras.layers.Layer):
                 k[:, :, begin:end],
                 v[:, :, begin:end],
             ]))
-        return self.kernel_activation(K.dot(K.concatenate(outputs), self.kernels['Wo']))
+        y = K.dot(K.concatenate(outputs), self.kernels['Wo'])
+        if self.activation is not None:
+            y = self.activation(y)
+        return y
