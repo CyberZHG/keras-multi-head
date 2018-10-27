@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='keras-multi-head',
-    version='0.12.0',
+    version='0.13.0',
     packages=['keras_multi_head'],
     url='https://github.com/CyberZHG/keras-multi-head',
     license='MIT',
