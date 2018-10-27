@@ -89,3 +89,30 @@ model.build()
 * `reg_index`: The indices of `layer.get_weights()`, a single integer or a list of integers.
 * `reg_slice`: `slice`s or a tuple of `slice`s or a list of the previous choices. If multiple indices are provided in `reg_index` and `reg_slice` is not a list, then `reg_slice` is assumed to be equal for all the indices. The whole array will be used if you leave this argument to `None`.
 * `reg_factor`: The factor of the regularization, a float or a list of floats.
+
+### Multi-Head Attention
+
+A more specific multi-head layer is provided (since the general one is harder to use). The layer uses scaled dot product attention layers as its sub-layers and only `head_num` is required:
+
+```python
+import keras
+from keras_multi_head import MultiHeadAttention
+
+input_layer = keras.layers.Input(
+    shape=(2, 3),
+    name='Input',
+)
+att_layer = MultiHeadAttention(
+    head_num=3,
+    name='Multi-Head',
+)(input_layer)
+model = keras.models.Model(inputs=input_layer, outputs=att_layer)
+model.compile(
+    optimizer='adam',
+    loss='mse',
+    metrics={},
+)
+model.summary()
+```
+
+The shapes of input and output tensors would be the same.
