@@ -32,7 +32,7 @@ class MultiHeadAttention(keras.layers.Layer):
         self.kernel_regularizer = keras.regularizers.get(kernel_regularizer)
         self.kernel_constraint = keras.constraints.get(kernel_constraint)
 
-        self.kernels = {name: None for name in ['Wq', 'Wk', 'Wv', 'Wo']}
+        self.Wq, self.Wk, self.Wv, self.Wo = None, None, None, None
         super(MultiHeadAttention, self).__init__(**kwargs)
 
     def get_config(self):
@@ -47,29 +47,56 @@ class MultiHeadAttention(keras.layers.Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
     def compute_output_shape(self, input_shape):
+        if isinstance(input_shape, list):
+            q, k, v = input_shape
+            return q[:-1] + (v[-1],)
         return input_shape
 
     def compute_mask(self, inputs, input_mask=None):
+        if isinstance(input_mask, list):
+            return input_mask[0]
         return input_mask
 
     def build(self, input_shape):
-        feature_dim = input_shape[-1]
+        if isinstance(input_shape, list):
+            q, k, v = input_shape
+        else:
+            q = k = v = input_shape
+        feature_dim = v[-1]
         if feature_dim % self.head_num != 0:
             raise IndexError('Invalid head number %d with the given input dim %d' % (self.head_num, feature_dim))
-        for name in ['Wq', 'Wk', 'Wv', 'Wo']:
-            self.kernels[name] = self.add_weight(
-                shape=(feature_dim, feature_dim),
-                initializer=self.kernel_initializer,
-                name='%s_%s' % (self.name, name),
-            )
+        self.Wq = self.add_weight(
+            shape=(q[-1], feature_dim),
+            initializer=self.kernel_initializer,
+            name='%s_Wq' % self.name,
+        )
+        self.Wk = self.add_weight(
+            shape=(k[-1], feature_dim),
+            initializer=self.kernel_initializer,
+            name='%s_Wk' % self.name,
+        )
+        self.Wv = self.add_weight(
+            shape=(v[-1], feature_dim),
+            initializer=self.kernel_initializer,
+            name='%s_Wv' % self.name,
+        )
+        self.Wo = self.add_weight(
+            shape=(feature_dim, feature_dim),
+            initializer=self.kernel_initializer,
+            name='%s_Wo' % self.name,
+        )
         super(MultiHeadAttention, self).build(input_shape)
 
     def call(self, inputs, mask=None):
-        feature_dim = K.shape(inputs)[-1]
+        if isinstance(inputs, list):
+            q, k, v = inputs
+        else:
+            q = k = v = inputs
+        feature_dim = K.shape(v)[-1]
         head_dim = feature_dim // self.head_num
-        q = K.dot(inputs, self.kernels['Wq'])
-        k = K.dot(inputs, self.kernels['Wk'])
-        v = K.dot(inputs, self.kernels['Wv'])
+        q = K.dot(q, self.Wq)
+        k = K.dot(k, self.Wk)
+        v = K.dot(v, self.Wv)
         if self.activation is not None:
             q = self.activation(q)
             k = self.activation(k)
@@ -82,7 +109,7 @@ class MultiHeadAttention(keras.layers.Layer):
                 k[:, :, begin:end],
                 v[:, :, begin:end],
             ]))
-        y = K.dot(K.concatenate(outputs), self.kernels['Wo'])
+        y = K.dot(K.concatenate(outputs), self.Wo)
         if self.activation is not None:
             y = self.activation(y)
         return y

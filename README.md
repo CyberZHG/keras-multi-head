@@ -115,4 +115,33 @@ model.compile(
 model.summary()
 ```
 
-The shapes of input and output tensors would be the same.
+The shapes of input and output tensors would be the same if only one layer is presented as input. The input layers will be considered as query, key and value when a list is given:
+
+```python
+import keras
+from keras_multi_head import MultiHeadAttention
+
+input_query = keras.layers.Input(
+    shape=(2, 3),
+    name='Input-Q',
+)
+input_key = keras.layers.Input(
+    shape=(4, 5),
+    name='Input-K',
+)
+input_value = keras.layers.Input(
+    shape=(4, 6),
+    name='Input-V',
+)
+att_layer = MultiHeadAttention(
+    head_num=3,
+    name='Multi-Head',
+)([input_query, input_key, input_value])
+model = keras.models.Model(inputs=input_layer, outputs=att_layer)
+model.compile(
+    optimizer='adam',
+    loss='mse',
+    metrics={},
+)
+model.summary()
+```
