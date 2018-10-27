@@ -3,8 +3,22 @@ import tempfile
 import random
 import unittest
 import keras
+import keras.backend as K
 import numpy as np
 from keras_multi_head import MultiHeadAttention
+
+
+class GetMask(keras.layers.Layer):
+
+    def __init__(self, **kwargs):
+        super(GetMask, self).__init__(**kwargs)
+        self.supports_masking = True
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[:-1]
+
+    def call(self, inputs, mask=None, **kwargs):
+        return K.cast(mask, K.floatx())
 
 
 class TestMultiHead(unittest.TestCase):
@@ -157,3 +171,31 @@ class TestMultiHead(unittest.TestCase):
             actual = np.round(predicts, decimals=1)
             self.assertTrue(np.allclose(expect, actual), (expect, actual))
             break
+
+    def test_mask_single(self):
+        input_layer = keras.layers.Input(shape=(None,))
+        embed_layer = keras.layers.Embedding(input_dim=3, output_dim=4, mask_zero=True)(input_layer)
+        att_layer = MultiHeadAttention(
+            head_num=2,
+            name='Multi-Head-2',
+        )(embed_layer)
+        mask_layer = GetMask()(att_layer)
+        model = keras.models.Model(inputs=input_layer, outputs=mask_layer)
+        model.compile(optimizer='adam', loss='mse', metrics={})
+        predicts = model.predict(np.asarray([[1, 2, 1, 2, 0, 0]])).tolist()
+        self.assertEqual([1.0] * 4 + [0.0] * 2, predicts[0], predicts[0])
+
+    def test_mask_multi(self):
+        input_q_layer = keras.layers.Input(shape=(None,))
+        input_kv_layer = keras.layers.Input(shape=(None,))
+        embed_q_layer = keras.layers.Embedding(input_dim=3, output_dim=4, mask_zero=True)(input_q_layer)
+        embed_kv_layer = keras.layers.Embedding(input_dim=3, output_dim=4, mask_zero=True)(input_kv_layer)
+        att_layer = MultiHeadAttention(
+            head_num=2,
+            name='Multi-Head-2',
+        )([embed_q_layer, embed_kv_layer, embed_kv_layer])
+        mask_layer = GetMask()(att_layer)
+        model = keras.models.Model(inputs=[input_q_layer, input_kv_layer], outputs=mask_layer)
+        model.compile(optimizer='adam', loss='mse', metrics={})
+        predicts = model.predict([np.asarray([[1, 2, 1, 2, 0, 0]]), np.asarray([[1, 2, 2, 0, 0, 0]])]).tolist()
+        self.assertEqual([1.0] * 4 + [0.0] * 2, predicts[0], predicts[0])

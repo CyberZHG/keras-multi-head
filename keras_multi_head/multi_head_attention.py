@@ -95,6 +95,10 @@ class MultiHeadAttention(keras.layers.Layer):
             q, k, v = inputs
         else:
             q = k = v = inputs
+        if isinstance(mask, list):
+            q_mask, k_mask, v_mask = mask
+        else:
+            q_mask = k_mask = v_mask = mask
         feature_dim = K.shape(v)[-1]
         head_dim = feature_dim // self.head_num
         q = K.dot(q, self.Wq)
@@ -110,11 +114,14 @@ class MultiHeadAttention(keras.layers.Layer):
             outputs.append(ScaledDotProductAttention(
                 history_only=self.history_only,
                 name='%s-Att-%d' % (self.name, i + 1),
-            )([
-                q[:, :, begin:end],
-                k[:, :, begin:end],
-                v[:, :, begin:end],
-            ]))
+            )(
+                inputs=[
+                    q[:, :, begin:end],
+                    k[:, :, begin:end],
+                    v[:, :, begin:end],
+                ],
+                mask=[q_mask, k_mask, v_mask],
+            ))
         y = K.dot(K.concatenate(outputs), self.Wo)
         if self.activation is not None:
             y = self.activation(y)
