@@ -3,11 +3,7 @@ import keras.backend as K
 from keras_self_attention import ScaledDotProductAttention
 
 
-class MultiHeadAttention(keras.layers.Layer):
-    """Multi-head attention layer.
-
-    See: https://arxiv.org/pdf/1706.03762.pdf
-    """
+class MultiHeadAttentionBrute(keras.layers.Layer):
 
     def __init__(self,
                  head_num,
@@ -22,7 +18,6 @@ class MultiHeadAttention(keras.layers.Layer):
                  history_only=False,
                  **kwargs):
         """Initialize the layer.
-
         :param head_num: Number of heads.
         :param activation: Activations for linear mappings.
         :param use_bias: Whether to use bias term.
@@ -48,7 +43,7 @@ class MultiHeadAttention(keras.layers.Layer):
 
         self.Wq, self.Wk, self.Wv, self.Wo = None, None, None, None
         self.bq, self.bk, self.bv, self.bo = None, None, None, None
-        super(MultiHeadAttention, self).__init__(**kwargs)
+        super(MultiHeadAttentionBrute, self).__init__(**kwargs)
 
     def get_config(self):
         config = {
@@ -63,7 +58,7 @@ class MultiHeadAttention(keras.layers.Layer):
             'bias_constraint': self.bias_constraint,
             'history_only': self.history_only,
         }
-        base_config = super(MultiHeadAttention, self).get_config()
+        base_config = super(MultiHeadAttentionBrute, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
     def compute_output_shape(self, input_shape):
@@ -145,33 +140,7 @@ class MultiHeadAttention(keras.layers.Layer):
                 constraint=self.bias_constraint,
                 name='%s_bo' % self.name,
             )
-        super(MultiHeadAttention, self).build(input_shape)
-
-    @staticmethod
-    def _reshape_to_batches(x, head_num):
-        input_shape = K.shape(x)
-        batch_size, seq_len, feature_dim = input_shape[0], input_shape[1], input_shape[2]
-        head_dim = feature_dim // head_num
-        x = K.reshape(x, (batch_size, seq_len, head_num, head_dim))
-        x = K.permute_dimensions(x, [0, 2, 1, 3])
-        return K.reshape(x, (batch_size * head_num, seq_len, head_dim))
-
-    @staticmethod
-    def _reshape_from_batches(x, head_num):
-        input_shape = K.shape(x)
-        batch_size, seq_len, feature_dim = input_shape[0], input_shape[1], input_shape[2]
-        x = K.reshape(x, (batch_size // head_num, head_num, seq_len, feature_dim))
-        x = K.permute_dimensions(x, [0, 2, 1, 3])
-        return K.reshape(x, (batch_size // head_num, seq_len, feature_dim * head_num))
-
-    @staticmethod
-    def _reshape_mask(mask, head_num):
-        if mask is None:
-            return mask
-        seq_len = K.shape(mask)[1]
-        mask = K.expand_dims(mask, axis=1)
-        mask = K.tile(mask, K.stack([1, head_num, 1]))
-        return K.reshape(mask, (-1, seq_len))
+        super(MultiHeadAttentionBrute, self).build(input_shape)
 
     def call(self, inputs, mask=None):
         if isinstance(inputs, list):
@@ -182,6 +151,8 @@ class MultiHeadAttention(keras.layers.Layer):
             q_mask, k_mask, v_mask = mask
         else:
             q_mask = k_mask = v_mask = mask
+        feature_dim = K.shape(v)[-1]
+        head_dim = feature_dim // self.head_num
         q = K.dot(q, self.Wq)
         k = K.dot(k, self.Wk)
         v = K.dot(v, self.Wv)
@@ -193,23 +164,21 @@ class MultiHeadAttention(keras.layers.Layer):
             q = self.activation(q)
             k = self.activation(k)
             v = self.activation(v)
-        y = ScaledDotProductAttention(
-            history_only=self.history_only,
-            name='%s-Attention' % self.name,
-        )(
-            inputs=[
-                self._reshape_to_batches(q, self.head_num),
-                self._reshape_to_batches(k, self.head_num),
-                self._reshape_to_batches(v, self.head_num),
-            ],
-            mask=[
-                self._reshape_mask(q_mask, self.head_num),
-                self._reshape_mask(k_mask, self.head_num),
-                self._reshape_mask(v_mask, self.head_num),
-            ],
-        )
-        y = self._reshape_from_batches(y, self.head_num)
-        y = K.dot(y, self.Wo)
+        outputs = []
+        for i in range(self.head_num):
+            begin, end = i * head_dim, (i + 1) * head_dim
+            outputs.append(ScaledDotProductAttention(
+                history_only=self.history_only,
+                name='%s-Att-%d' % (self.name, i + 1),
+            )(
+                inputs=[
+                    q[:, :, begin:end],
+                    k[:, :, begin:end],
+                    v[:, :, begin:end],
+                ],
+                mask=[q_mask, k_mask, v_mask],
+            ))
+        y = K.dot(K.concatenate(outputs), self.Wo)
         if self.use_bias:
             y += self.bo
         if self.activation is not None:

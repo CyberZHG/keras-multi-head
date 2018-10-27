@@ -6,6 +6,7 @@ import keras
 import keras.backend as K
 import numpy as np
 from keras_multi_head import MultiHeadAttention
+from .multi_head_attention_brute import MultiHeadAttentionBrute
 
 
 class GetMask(keras.layers.Layer):
@@ -111,11 +112,11 @@ class TestMultiHead(unittest.TestCase):
 
     def test_fit_multi(self):
         input_query = keras.layers.Input(
-            shape=(2, 3),
+            shape=(2, 6),
             name='Input-Q',
         )
         input_key = keras.layers.Input(
-            shape=(4, 5),
+            shape=(4, 6),
             name='Input-K',
         )
         input_value = keras.layers.Input(
@@ -143,8 +144,8 @@ class TestMultiHead(unittest.TestCase):
         def _generator(batch_size=32):
             while True:
                 inputs = [
-                    np.random.random((batch_size, 2, 3)),
-                    np.random.random((batch_size, 4, 5)),
+                    np.random.random((batch_size, 2, 6)),
+                    np.random.random((batch_size, 4, 6)),
                     np.random.random((batch_size, 4, 6)),
                 ]
                 outputs = np.asarray([[[0.0, -0.1, 0.2]] * 2] * batch_size)
@@ -199,3 +200,48 @@ class TestMultiHead(unittest.TestCase):
         model.compile(optimizer='adam', loss='mse', metrics={})
         predicts = model.predict([np.asarray([[1, 2, 1, 2, 0, 0]]), np.asarray([[1, 2, 2, 0, 0, 0]])]).tolist()
         self.assertEqual([1.0] * 4 + [0.0] * 2, predicts[0], predicts[0])
+
+    def test_compare_brute(self):
+        for case in range(10):
+            batch_size = random.randint(1, 10)
+            token_num = random.randint(2, 10)
+            head_num = random.randint(1, 5)
+            feature_dim = random.randint(1, 5) * head_num
+            seq_len = random.randint(1, 10)
+            weights = []
+            for i in range(8):
+                if i % 2 == 0:
+                    weights.append(np.random.random((feature_dim, feature_dim)))
+                else:
+                    weights.append(np.random.random((feature_dim,)))
+            input_q_layer = keras.layers.Input(shape=(None,))
+            input_kv_layer = keras.layers.Input(shape=(None,))
+            embed_q_layer = keras.layers.Embedding(
+                input_dim=token_num,
+                output_dim=feature_dim,
+                mask_zero=True,
+            )(input_q_layer)
+            embed_kv_layer = keras.layers.Embedding(
+                input_dim=token_num,
+                output_dim=feature_dim,
+                mask_zero=True,
+            )(input_kv_layer)
+            att_layer = MultiHeadAttention(
+                head_num=head_num,
+                weights=weights,
+                name='Multi-Head-1',
+            )([embed_q_layer, embed_kv_layer, embed_kv_layer])
+            att_brute_layer = MultiHeadAttentionBrute(
+                head_num=head_num,
+                weights=weights,
+                name='Multi-Head-2',
+            )([embed_q_layer, embed_kv_layer, embed_kv_layer])
+            model = keras.models.Model(inputs=[input_q_layer, input_kv_layer], outputs=[att_layer, att_brute_layer])
+            model.compile(optimizer='adam', loss='mse', metrics={})
+            if case == 0:
+                model.summary(line_length=120)
+            predicts = model.predict([
+                np.random.randint(low=0, high=token_num - 1, size=(batch_size, seq_len)),
+                np.random.randint(low=0, high=token_num - 1, size=(batch_size, seq_len)),
+            ])
+            self.assertTrue(np.allclose(predicts[0], predicts[1]))
