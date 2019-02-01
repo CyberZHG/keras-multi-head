@@ -53,14 +53,14 @@ class MultiHeadAttention(keras.layers.Layer):
     def get_config(self):
         config = {
             'head_num': self.head_num,
-            'activation': self.activation,
+            'activation': keras.activations.serialize(self.activation),
             'use_bias': self.use_bias,
-            'kernel_initializer': self.kernel_initializer,
-            'bias_initializer': self.bias_initializer,
-            'kernel_regularizer': self.kernel_regularizer,
-            'bias_regularizer': self.bias_regularizer,
-            'kernel_constraint': self.kernel_constraint,
-            'bias_constraint': self.bias_constraint,
+            'kernel_initializer': keras.initializers.serialize(self.kernel_initializer),
+            'bias_initializer': keras.initializers.serialize(self.bias_initializer),
+            'kernel_regularizer': keras.regularizers.serialize(self.kernel_regularizer),
+            'bias_regularizer': keras.regularizers.serialize(self.bias_regularizer),
+            'kernel_constraint': keras.constraints.serialize(self.kernel_constraint),
+            'bias_constraint': keras.constraints.serialize(self.bias_constraint),
             'history_only': self.history_only,
         }
         base_config = super(MultiHeadAttention, self).get_config()
