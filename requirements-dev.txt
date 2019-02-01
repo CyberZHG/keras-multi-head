@@ -1,6 +1,5 @@
 pycodestyle
 coverage
-m2r
 twine
 keras-self-attention
 keras-piecewise-pooling
