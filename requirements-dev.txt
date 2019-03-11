@@ -1,5 +1,7 @@
+setuptools>=38.6.0
+twine>=1.11.0
+wheel>=0.31.0
 pycodestyle
 coverage
-twine
-keras-self-attention
+tensorflow
 keras-piecewise-pooling

@@ -1,4 +1,3 @@
 numpy
-tensorflow
 Keras
-keras-self-attention==0.33.0
+keras-self-attention==0.35.0
