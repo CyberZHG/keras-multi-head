@@ -1,6 +1,5 @@
 import os
 import tempfile
-import random
 import unittest
 import keras
 import numpy as np
@@ -23,14 +22,14 @@ class TestMultiHead(unittest.TestCase):
     @staticmethod
     def data_generator(batch_size=32):
         while True:
-            max_len = random.randint(5, 10)
+            max_len = np.random.randint(5, 10)
             data = np.zeros((batch_size, max_len))
             tag = np.zeros(batch_size, dtype='int32')
             for i in range(batch_size):
-                datum_len = random.randint(1, max_len - 1)
+                datum_len = np.random.randint(1, max_len - 1)
                 total = 0
                 for j in range(datum_len):
-                    data[i, j] = random.randint(1, 4)
+                    data[i, j] = np.random.randint(1, 4)
                     total += data[i, j]
                 tag[i] = total % 2
             yield data, tag
@@ -68,7 +67,7 @@ class TestMultiHead(unittest.TestCase):
         )
         model.layers[1].set_weights(model.layers[1].get_weights())
 
-        model_path = os.path.join(tempfile.gettempdir(), 'test_save_load_%f.h5' % random.random())
+        model_path = os.path.join(tempfile.gettempdir(), 'test_save_load_%f.h5' % np.random.random())
         model.save(model_path)
         model = keras.models.load_model(model_path, custom_objects={
             'MaskFlatten': MaskFlatten,

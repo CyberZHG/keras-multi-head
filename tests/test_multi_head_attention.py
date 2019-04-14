@@ -1,6 +1,5 @@
 import os
 import tempfile
-import random
 import unittest
 import keras
 import keras.backend as K
@@ -98,7 +97,7 @@ class TestMultiHead(unittest.TestCase):
                 keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
             ],
         )
-        model_path = os.path.join(tempfile.gettempdir(), 'test_save_load_%f.h5' % random.random())
+        model_path = os.path.join(tempfile.gettempdir(), 'test_save_load_%f.h5' % np.random.random())
         model.save(model_path)
         model = keras.models.load_model(model_path, custom_objects={
             'MultiHeadAttention': MultiHeadAttention,
@@ -161,7 +160,7 @@ class TestMultiHead(unittest.TestCase):
                 keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
             ],
         )
-        model_path = os.path.join(tempfile.gettempdir(), 'test_save_load_%f.h5' % random.random())
+        model_path = os.path.join(tempfile.gettempdir(), 'test_save_load_%f.h5' % np.random.random())
         model.save(model_path)
         model = keras.models.load_model(model_path, custom_objects={
             'MultiHeadAttention': MultiHeadAttention,
@@ -203,11 +202,11 @@ class TestMultiHead(unittest.TestCase):
 
     def test_compare_brute(self):
         for case in range(10):
-            batch_size = random.randint(1, 10)
-            token_num = random.randint(2, 10)
-            head_num = random.randint(1, 5)
-            feature_dim = random.randint(1, 5) * head_num
-            seq_len = random.randint(1, 10)
+            batch_size = np.random.randint(1, 10)
+            token_num = np.random.randint(2, 10)
+            head_num = np.random.randint(1, 5)
+            feature_dim = np.random.randint(1, 5) * head_num
+            seq_len = np.random.randint(1, 10)
             weights = []
             for i in range(8):
                 if i % 2 == 0:
@@ -244,4 +243,4 @@ class TestMultiHead(unittest.TestCase):
                 np.random.randint(low=0, high=token_num - 1, size=(batch_size, seq_len)),
                 np.random.randint(low=0, high=token_num - 1, size=(batch_size, seq_len)),
             ])
-            self.assertTrue(np.allclose(predicts[0], predicts[1]))
+            self.assertTrue(np.allclose(predicts[0], predicts[1]), predicts)
