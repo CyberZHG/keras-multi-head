@@ -1,5 +1,5 @@
-import keras
-import keras.backend as K
+from keras_self_attention.backend import keras
+from keras_self_attention.backend import backend as K
 from keras_self_attention import ScaledDotProductAttention
 
 
@@ -77,11 +77,11 @@ class MultiHeadAttentionBrute(keras.layers.Layer):
             q, k, v = input_shape
         else:
             q = k = v = input_shape
-        feature_dim = v[-1]
+        feature_dim = int(v[-1])
         if feature_dim % self.head_num != 0:
             raise IndexError('Invalid head number %d with the given input dim %d' % (self.head_num, feature_dim))
         self.Wq = self.add_weight(
-            shape=(q[-1], feature_dim),
+            shape=(int(q[-1]), feature_dim),
             initializer=self.kernel_initializer,
             regularizer=self.kernel_regularizer,
             constraint=self.kernel_constraint,
@@ -96,7 +96,7 @@ class MultiHeadAttentionBrute(keras.layers.Layer):
                 name='%s_bq' % self.name,
             )
         self.Wk = self.add_weight(
-            shape=(k[-1], feature_dim),
+            shape=(int(k[-1]), feature_dim),
             initializer=self.kernel_initializer,
             regularizer=self.kernel_regularizer,
             constraint=self.kernel_constraint,
@@ -111,7 +111,7 @@ class MultiHeadAttentionBrute(keras.layers.Layer):
                 name='%s_bk' % self.name,
             )
         self.Wv = self.add_weight(
-            shape=(v[-1], feature_dim),
+            shape=(int(v[-1]), feature_dim),
             initializer=self.kernel_initializer,
             regularizer=self.kernel_regularizer,
             constraint=self.kernel_constraint,

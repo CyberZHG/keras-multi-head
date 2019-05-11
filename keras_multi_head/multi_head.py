@@ -1,6 +1,6 @@
 import copy
-import keras
-import keras.backend as K
+from .backend import keras
+from .backend import backend as K
 
 
 class MultiHead(keras.layers.Wrapper):
@@ -30,12 +30,10 @@ class MultiHead(keras.layers.Wrapper):
             self.layer = layer[0]
             self.layers = layer
             self.layer_num = len(self.layers)
-            self.rename = False
         else:
             self.layer = layer
             self.layers = []
             self.layer_num = layer_num
-            self.rename = True
         self.hidden_dim = hidden_dim
         self.use_bias = use_bias
         if reg_index is None or type(reg_index) is list:
@@ -109,11 +107,20 @@ class MultiHead(keras.layers.Wrapper):
             self.input_spec = list(map(lambda x: keras.engine.InputSpec(shape=x), input_shape))
         else:
             self.input_spec = keras.engine.InputSpec(shape=input_shape)
-        if not self.layers:
-            self.layers = [copy.deepcopy(self.layer) for _ in range(self.layer_num)]
+        if isinstance(self.layers, list) and len(self.layers) == 0:
+            self.layer.build(input_shape)
+            config = self.layer.get_config()
+            name = config['name']
+            self.layers = []
+            for i in range(self.layer_num):
+                copied = copy.copy(config)
+                copied['name'] = name + '_{}'.format(i + 1)
+                self.layers.append(self.layer.__class__.from_config(copied))
+        for layer in self.layers:
+            layer.build(input_shape)
         if self.hidden_dim is not None:
             self.W = self.add_weight(
-                shape=(input_shape[-1], self.hidden_dim * self.layer_num),
+                shape=(int(input_shape[-1]), self.hidden_dim * self.layer_num),
                 name='{}_W'.format(self.name),
                 initializer=keras.initializers.get('uniform'),
             )
@@ -123,12 +130,6 @@ class MultiHead(keras.layers.Wrapper):
                     name='{}_b'.format(self.name),
                     initializer=keras.initializers.get('zeros'),
                 )
-            input_shape = input_shape[:-1] + (self.hidden_dim,)
-        for i, layer in enumerate(self.layers):
-            if not layer.built:
-                if self.rename:
-                    layer.name = layer.name + '_%d' % (i + 1)
-                layer.build(input_shape)
         if self.reg_index:
             for i, (index, interval, weight) in enumerate(zip(self.reg_index, self.reg_slice, self.reg_weight)):
                 weights = []
