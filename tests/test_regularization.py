@@ -1,8 +1,8 @@
 import os
 import tempfile
 import unittest
-import keras
 import numpy as np
+from keras_self_attention.backend import keras
 from keras_multi_head import MultiHead
 from keras_self_attention import SeqWeightedAttention as Attention
 from .test_multi_head import MaskFlatten
