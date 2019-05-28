@@ -27,11 +27,9 @@ class TestMultiHead(unittest.TestCase):
             tag = np.zeros(batch_size, dtype='int32')
             for i in range(batch_size):
                 datum_len = np.random.randint(1, max_len - 1)
-                total = 0
                 for j in range(datum_len):
                     data[i, j] = np.random.randint(1, 4)
-                    total += data[i, j]
-                tag[i] = total % 2
+                tag[i] = int(1 in data[i])
             yield data, tag
 
     def test_multi_attention(self):

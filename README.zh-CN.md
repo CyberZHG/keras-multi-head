@@ -2,7 +2,9 @@
 
 [![Travis](https://travis-ci.org/CyberZHG/keras-multi-head.svg)](https://travis-ci.org/CyberZHG/keras-multi-head)
 [![Coverage](https://coveralls.io/repos/github/CyberZHG/keras-multi-head/badge.svg?branch=master)](https://coveralls.io/github/CyberZHG/keras-multi-head)
-[![PyPI](https://img.shields.io/pypi/pyversions/keras-multi-head.svg)](https://pypi.org/project/keras-multi-head/)
+[![Version](https://img.shields.io/pypi/v/keras-multi-head.svg)](https://pypi.org/project/keras-multi-head/)
+![Downloads](https://img.shields.io/pypi/dm/keras-multi-head.svg)
+![License](https://img.shields.io/pypi/l/keras-multi-head.svg)
 
 将多个层横向放置在一起的封装：
 
@@ -135,7 +137,7 @@ att_layer = MultiHeadAttention(
     head_num=3,
     name='Multi-Head',
 )([input_query, input_key, input_value])
-model = keras.models.Model(inputs=input_layer, outputs=att_layer)
+model = keras.models.Model(inputs=[input_query, input_key, input_value], outputs=att_layer)
 model.compile(
     optimizer='adam',
     loss='mse',
