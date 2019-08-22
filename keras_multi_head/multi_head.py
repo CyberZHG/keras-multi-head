@@ -2,8 +2,13 @@ import copy
 from .backend import keras
 from .backend import backend as K
 
+try:
+    Wrapper = keras.layers.Wrapper
+except AttributeError:
+    Wrapper = keras.layers.wrappers.Wrapper
 
-class MultiHead(keras.layers.Wrapper):
+
+class MultiHead(Wrapper):
 
     def __init__(self,
                  layer,
