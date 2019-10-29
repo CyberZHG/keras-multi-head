@@ -1,4 +1,6 @@
 import copy
+import inspect
+
 from .backend import keras
 from .backend import backend as K
 
@@ -6,6 +8,14 @@ try:
     Wrapper = keras.layers.Wrapper
 except AttributeError:
     Wrapper = keras.layers.wrappers.Wrapper
+
+
+def has_arg(fn, name):
+    signature = inspect.signature(fn)
+    parameter = signature.parameters.get(name)
+    if parameter is None:
+        return False
+    return (parameter.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY))
 
 
 class MultiHead(Wrapper):
@@ -108,10 +118,6 @@ class MultiHead(Wrapper):
         return cls(layers, reg_slice=reg_slice, **config)
 
     def build(self, input_shape):
-        if type(input_shape) == list:
-            self.input_spec = list(map(lambda x: keras.engine.InputSpec(shape=x), input_shape))
-        else:
-            self.input_spec = keras.engine.InputSpec(shape=input_shape)
         if isinstance(self.layers, list) and len(self.layers) == 0:
             self.layer.build(input_shape)
             config = self.layer.get_config()
@@ -160,9 +166,9 @@ class MultiHead(Wrapper):
 
     def call(self, inputs, training=None, mask=None):
         kwargs = {}
-        if keras.utils.generic_utils.has_arg(self.layer.call, 'training'):
+        if has_arg(self.layer.call, 'training'):
             kwargs['training'] = training
-        if keras.utils.generic_utils.has_arg(self.layer.call, 'mask') and mask is not None:
+        if has_arg(self.layer.call, 'mask') and mask is not None:
             kwargs['mask'] = mask
         if self.hidden_dim is None:
             outputs = [K.expand_dims(layer.call(inputs, **kwargs)) for layer in self.layers]

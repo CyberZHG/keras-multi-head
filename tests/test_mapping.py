@@ -47,7 +47,7 @@ class TestMultiHead(unittest.TestCase):
         model.add(keras.layers.Dense(units=2, activation='softmax', name='Dense'))
         model.build()
         model.compile(
-            optimizer=keras.optimizers.Adam(),
+            optimizer='adam',
             loss=keras.losses.sparse_categorical_crossentropy,
             metrics=[keras.metrics.sparse_categorical_accuracy],
         )

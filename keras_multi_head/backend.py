@@ -1,24 +1,24 @@
 import os
+from distutils.util import strtobool
 
 __all__ = [
-    'keras', 'utils', 'activations', 'applications', 'backend', 'datasets', 'engine',
+    'keras', 'utils', 'activations', 'applications', 'backend', 'datasets',
     'layers', 'preprocessing', 'wrappers', 'callbacks', 'constraints', 'initializers',
-    'metrics', 'models', 'losses', 'optimizers', 'regularizers', 'TF_KERAS'
+    'metrics', 'models', 'losses', 'optimizers', 'regularizers', 'TF_KERAS',
 ]
 
-if 'TF_KERAS' in os.environ and os.environ['TF_KERAS'] != '0':
-    from tensorflow.python import keras
-    TF_KERAS = True
+TF_KERAS = strtobool(os.environ.get('TF_KERAS', '0'))
+
+if TF_KERAS:
+    from tensorflow import keras
 else:
     import keras
-    TF_KERAS = False
 
 utils = keras.utils
 activations = keras.activations
 applications = keras.applications
 backend = keras.backend
 datasets = keras.datasets
-engine = keras.engine
 layers = keras.layers
 preprocessing = keras.preprocessing
 wrappers = keras.wrappers
