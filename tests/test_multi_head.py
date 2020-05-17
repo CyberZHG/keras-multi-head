@@ -76,9 +76,9 @@ class TestMultiHead(unittest.TestCase):
         model = keras.models.Sequential()
         model.add(keras.layers.Embedding(input_dim=5, output_dim=3, name='Embed'))
         model.add(MultiHead([
-            keras.layers.Conv1D(filters=32, kernel_size=3, padding='same'),
-            keras.layers.Conv1D(filters=32, kernel_size=5, padding='same'),
-            keras.layers.Conv1D(filters=32, kernel_size=7, padding='same'),
+            keras.layers.Conv1D(filters=32, kernel_size=3, padding='same', name='Conv1'),
+            keras.layers.Conv1D(filters=32, kernel_size=5, padding='same', name='Conv2'),
+            keras.layers.Conv1D(filters=32, kernel_size=7, padding='same', name='Conv3'),
         ], name='Multi-Head-Attention'))
         model.add(keras.layers.TimeDistributed(keras.layers.Flatten(), name='Flatten'))
         model.add(keras.layers.Bidirectional(keras.layers.GRU(units=8), name='Bi-GRU'))

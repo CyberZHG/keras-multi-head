@@ -6,6 +6,9 @@
 ![Downloads](https://img.shields.io/pypi/dm/keras-multi-head.svg)
 ![License](https://img.shields.io/pypi/l/keras-multi-head.svg)
 
+![](https://img.shields.io/badge/keras-tensorflow-blue.svg)
+![](https://img.shields.io/badge/keras-tf.keras-blue.svg)
+
 A wrapper layer for stacking layers horizontally.
 
 ![](https://user-images.githubusercontent.com/853842/45797517-867b8580-bcd8-11e8-9ec6-39d6508cf438.png)

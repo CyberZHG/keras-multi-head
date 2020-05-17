@@ -127,8 +127,9 @@ class MultiHead(Wrapper):
                 copied = copy.copy(config)
                 copied['name'] = name + '_{}'.format(i + 1)
                 self.layers.append(self.layer.__class__.from_config(copied))
-        for layer in self.layers:
-            layer.build(input_shape)
+        for i, layer in enumerate(self.layers):
+            with K.name_scope('sub_{}'.format(i)):
+                layer.build(input_shape)
         if self.hidden_dim is not None:
             self.W = self.add_weight(
                 shape=(int(input_shape[-1]), self.hidden_dim * self.layer_num),
