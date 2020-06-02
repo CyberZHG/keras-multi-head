@@ -1,3 +1,3 @@
 numpy
 Keras
-keras-self-attention==0.41.0
+keras-self-attention==0.43.0

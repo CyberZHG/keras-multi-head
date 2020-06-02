@@ -238,8 +238,12 @@ class TestMultiHead(unittest.TestCase):
             model.compile(optimizer='adam', loss='mse', metrics={})
             if case == 0:
                 model.summary(line_length=120)
-            predicts = model.predict([
-                np.random.randint(low=0, high=token_num - 1, size=(batch_size, seq_len)),
-                np.random.randint(low=0, high=token_num - 1, size=(batch_size, seq_len)),
-            ])
+            data_q = np.random.randint(low=0, high=token_num, size=(batch_size, seq_len))
+            data_kv = np.random.randint(low=0, high=token_num, size=(batch_size, seq_len))
+            for i in range(batch_size):
+                if np.sum(data_q[i]) == 0:
+                    data_q[i][np.random.randint(low=0, high=seq_len)] = np.random.randint(low=1, high=token_num)
+                if np.sum(data_kv[i]) == 0:
+                    data_kv[i][np.random.randint(low=0, high=seq_len)] = np.random.randint(low=1, high=token_num)
+            predicts = model.predict([data_q, data_kv])
             self.assertTrue(np.allclose(predicts[0], predicts[1]), predicts)
