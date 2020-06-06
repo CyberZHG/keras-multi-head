@@ -46,8 +46,10 @@ class MultiHeadAttention(keras.layers.Layer):
         self.bias_constraint = keras.constraints.get(bias_constraint)
         self.history_only = history_only
 
-        self.Wq, self.Wk, self.Wv, self.Wo = None, None, None, None
-        self.bq, self.bk, self.bv, self.bo = None, None, None, None
+        self.Wq = self.Wk = self.Wv = self.Wo = None
+        self.bq = self.bk = self.bv = self.bo = None
+
+        self.intensity = self.attention = None
         super(MultiHeadAttention, self).__init__(**kwargs)
 
     def get_config(self):
@@ -157,6 +159,13 @@ class MultiHeadAttention(keras.layers.Layer):
         return K.reshape(x, (batch_size * head_num, seq_len, head_dim))
 
     @staticmethod
+    def _reshape_attention_from_batches(x, head_num):
+        input_shape = K.shape(x)
+        batch_size, seq_len, feature_dim = input_shape[0], input_shape[1], input_shape[2]
+        x = K.reshape(x, (batch_size // head_num, head_num, seq_len, feature_dim))
+        return K.permute_dimensions(x, [0, 2, 1, 3])
+
+    @staticmethod
     def _reshape_from_batches(x, head_num):
         input_shape = K.shape(x)
         batch_size, seq_len, feature_dim = input_shape[0], input_shape[1], input_shape[2]
@@ -193,10 +202,11 @@ class MultiHeadAttention(keras.layers.Layer):
             q = self.activation(q)
             k = self.activation(k)
             v = self.activation(v)
-        y = ScaledDotProductAttention(
+        scaled_dot_product_attention = ScaledDotProductAttention(
             history_only=self.history_only,
             name='%s-Attention' % self.name,
-        )(
+        )
+        y = scaled_dot_product_attention(
             inputs=[
                 self._reshape_to_batches(q, self.head_num),
                 self._reshape_to_batches(k, self.head_num),
@@ -208,6 +218,8 @@ class MultiHeadAttention(keras.layers.Layer):
                 self._reshape_mask(v_mask, self.head_num),
             ],
         )
+        self.intensity = self._reshape_attention_from_batches(scaled_dot_product_attention.intensity, self.head_num)
+        self.attention = self._reshape_attention_from_batches(scaled_dot_product_attention.attention, self.head_num)
         y = self._reshape_from_batches(y, self.head_num)
         y = K.dot(y, self.Wo)
         if self.use_bias:

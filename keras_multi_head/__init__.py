@@ -1,4 +1,4 @@
 from .multi_head import MultiHead
 from .multi_head_attention import MultiHeadAttention
 
-__version__ = '0.26.0'
+__version__ = '0.27.0'

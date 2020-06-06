@@ -64,7 +64,7 @@ class MultiHead(Wrapper):
         else:
             self.reg_weight = [reg_factor] * len(self.reg_index)
 
-        self.W, self.b = None, None
+        self.W = self.b = None
         self.supports_masking = self.layer.supports_masking
         super(MultiHead, self).__init__(self.layer, **kwargs)
 
