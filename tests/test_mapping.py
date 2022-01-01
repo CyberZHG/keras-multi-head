@@ -1,8 +1,10 @@
 import os
 import tempfile
 import unittest
+
 import numpy as np
-from keras_self_attention.backend import keras
+from tensorflow import keras
+
 from keras_self_attention import SeqSelfAttention as Attention
 from keras_multi_head import MultiHead
 

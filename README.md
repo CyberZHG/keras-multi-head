@@ -1,13 +1,7 @@
 # Keras Multi-Head
 
-[![Travis](https://travis-ci.org/CyberZHG/keras-multi-head.svg)](https://travis-ci.org/CyberZHG/keras-multi-head)
-[![Coverage](https://coveralls.io/repos/github/CyberZHG/keras-multi-head/badge.svg?branch=master)](https://coveralls.io/github/CyberZHG/keras-multi-head)
 [![Version](https://img.shields.io/pypi/v/keras-multi-head.svg)](https://pypi.org/project/keras-multi-head/)
-![Downloads](https://img.shields.io/pypi/dm/keras-multi-head.svg)
 ![License](https://img.shields.io/pypi/l/keras-multi-head.svg)
-
-![](https://img.shields.io/badge/keras-tensorflow-blue.svg)
-![](https://img.shields.io/badge/keras-tf.keras-blue.svg)
 
 A wrapper layer for stacking layers horizontally.
 
@@ -26,7 +20,7 @@ pip install keras-multi-head
 The layer will be duplicated if only a single layer is provided. The `layer_num` argument controls how many layers will be duplicated eventually.
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHead
 
 
@@ -44,7 +38,7 @@ model.summary()
 The first argument could also be a list of layers with different configurations, however, they must have the same output shapes.
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHead
 
 
@@ -72,7 +66,7 @@ The regularization is used when you expect to extract different features from th
 For example, the bidirectional LSTM layer has 6 weights by default, and the first 3s belong to the forward layer. The 2nd weight (recurrent kernel) in the forward layer controls the computation of gates for recurrent connections. The kernel for computing cell states lays in units x 2 to units x 3 of the recurrent kernel. We can used the regularization for the kernels:
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHead
 
 
@@ -100,7 +94,7 @@ model.build()
 A more specific multi-head layer is provided (since the general one is harder to use). The layer uses scaled dot product attention layers as its sub-layers and only `head_num` is required:
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHeadAttention
 
 input_layer = keras.layers.Input(
@@ -123,7 +117,7 @@ model.summary()
 The shapes of input and output tensors would be the same if only one layer is presented as input. The input layers will be considered as query, key and value when a list is given:
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHeadAttention
 
 input_query = keras.layers.Input(

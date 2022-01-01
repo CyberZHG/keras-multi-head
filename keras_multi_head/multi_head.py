@@ -1,8 +1,8 @@
 import copy
 import inspect
 
-from .backend import keras
-from .backend import backend as K
+from tensorflow import keras
+from tensorflow.keras import backend as K
 
 try:
     Wrapper = keras.layers.Wrapper

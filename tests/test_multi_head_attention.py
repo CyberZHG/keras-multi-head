@@ -1,9 +1,11 @@
 import os
 import tempfile
 import unittest
+
 import numpy as np
-from keras_self_attention.backend import keras
-from keras_self_attention.backend import backend as K
+from tensorflow import keras
+from tensorflow.keras import backend as K
+
 from keras_multi_head import MultiHeadAttention
 from .multi_head_attention_brute import MultiHeadAttentionBrute
 

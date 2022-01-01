@@ -1,13 +1,7 @@
 # Keras Multi-Head
 
-[![Travis](https://travis-ci.org/CyberZHG/keras-multi-head.svg)](https://travis-ci.org/CyberZHG/keras-multi-head)
-[![Coverage](https://coveralls.io/repos/github/CyberZHG/keras-multi-head/badge.svg?branch=master)](https://coveralls.io/github/CyberZHG/keras-multi-head)
 [![Version](https://img.shields.io/pypi/v/keras-multi-head.svg)](https://pypi.org/project/keras-multi-head/)
-![Downloads](https://img.shields.io/pypi/dm/keras-multi-head.svg)
 ![License](https://img.shields.io/pypi/l/keras-multi-head.svg)
-
-![](https://img.shields.io/badge/keras-tensorflow-blue.svg)
-![](https://img.shields.io/badge/keras-tf.keras-blue.svg)
 
 将多个层横向放置在一起的封装：
 
@@ -26,7 +20,7 @@ pip install keras-multi-head
 当输入的第一个参数只包含一个层时，`layer_num`决定了会复制多少相同配置的层并列到一起：
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHead
 
 
@@ -44,7 +38,7 @@ model.summary()
 第一个参数也可以输出不同的层，但最终的输出必须要相同：
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHead
 
 
@@ -70,7 +64,7 @@ model.summary()
 正则化应用于层的可训练权重，目的是为了让平行的层提取出不同的特征，可以指定只使用其中一端权重进行正则化。如双向的LSTM包含6个权重，前三个属于前向传播，后三个属于后向传播。每组里第二个权重recurrent状态的计算，`units x 2`到`units x 3`部分负责计算cell states。如下是将前向传播的recurrent权重，后向传播recurrent权重的cell states部分进行正则化：
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHead
 
 
@@ -98,7 +92,7 @@ model.build()
 [Transformer](https://arxiv.org/pdf/1706.03762.pdf)中使用的注意力机制，需要指定`head_num`且`head_num`必须要能整除输入的隐藏维度：
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHeadAttention
 
 input_layer = keras.layers.Input(
@@ -121,7 +115,7 @@ model.summary()
 当输入只有一个tensor时，输入和输出的形状相同；当输入是一个`list`时，会被认为是包含Q、K、V的`list`：
 
 ```python
-import keras
+from tensorflow import keras
 from keras_multi_head import MultiHeadAttention
 
 input_query = keras.layers.Input(

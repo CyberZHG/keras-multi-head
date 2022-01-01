@@ -1,5 +1,6 @@
-from keras_self_attention.backend import keras
-from keras_self_attention.backend import backend as K
+from tensorflow import keras
+from tensorflow.keras import backend as K
+
 from keras_self_attention import ScaledDotProductAttention
 
 
